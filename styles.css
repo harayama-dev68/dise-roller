@@ -27,21 +27,59 @@ h1 {
 }
 
 .scene {
-  width: 180px;
-  height: 180px;
+  width: 300px;
+  height: 240px;
   margin: 0 auto 1.5rem;
-  perspective: 700px;
+  perspective: 900px;
+  position: relative;
+}
+
+.scene::after {
+  content: '';
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 10px;
+  height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, #4d5f80 0%, #2a3852 65%, #1b2638 100%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  transform: rotateX(68deg);
+  transform-origin: center bottom;
 }
 
 .dice {
   --size: 110px;
+  --from-x: -30;
+  --from-y: 30;
+  --to-x: -30;
+  --to-y: 30;
   width: var(--size);
   height: var(--size);
-  position: relative;
-  margin: 35px;
+  position: absolute;
+  left: calc(50% - var(--size) / 2);
+  bottom: 48px;
   transform-style: preserve-3d;
-  transform: rotateX(-30deg) rotateY(30deg);
-  transition: transform 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: rotateX(calc(var(--to-x) * 1deg)) rotateY(calc(var(--to-y) * 1deg));
+}
+
+.dice.rolling {
+  animation: drop-and-roll 1.6s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+@keyframes drop-and-roll {
+  0% {
+    transform: translate3d(0, -200px, 0) rotateX(calc(var(--from-x) * 1deg)) rotateY(calc(var(--from-y) * 1deg));
+  }
+  55% {
+    transform: translate3d(30px, 0, 0) rotateX(calc(var(--to-x) * 1deg + 420deg)) rotateY(calc(var(--to-y) * 1deg + 420deg));
+  }
+  72% {
+    transform: translate3d(-16px, -16px, 0) rotateX(calc(var(--to-x) * 1deg + 120deg)) rotateY(calc(var(--to-y) * 1deg + 120deg));
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotateX(calc(var(--to-x) * 1deg)) rotateY(calc(var(--to-y) * 1deg));
+  }
 }
 
 .face {
