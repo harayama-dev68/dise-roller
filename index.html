@@ -3,28 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>3D Dice Roller</title>
+    <title>3D Dice Roller (Physics)</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="app">
       <h1>3D Dice Roller</h1>
       <p class="result" id="result">結果: -</p>
-
-      <div class="scene" aria-label="6面ダイスの表示">
-        <div class="dice" id="dice" role="img" aria-label="ダイス">
-          <div class="face face-1">1</div>
-          <div class="face face-2">2</div>
-          <div class="face face-3">3</div>
-          <div class="face face-4">4</div>
-          <div class="face face-5">5</div>
-          <div class="face face-6">6</div>
-        </div>
-      </div>
-
+      <div class="scene" id="scene" aria-label="物理演算ダイスの表示"></div>
       <button id="rollButton" type="button">転がす</button>
     </main>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
   </body>
 </html>
