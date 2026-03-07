@@ -50,7 +50,7 @@ const wallThickness = 0.8;
 const wallMat = new THREE.MeshStandardMaterial({
   color: '#8fb7ff',
   transparent: true,
-  opacity: 0.12,
+  opacity: 1,
   roughness: 0.6,
   metalness: 0,
 });
@@ -58,7 +58,7 @@ let isWallTransparencyEnabled = false;
 
 function setWallTransparency(isTransparent) {
   isWallTransparencyEnabled = isTransparent;
-  wallMat.opacity = isTransparent ? 0 : 0.12;
+  wallMat.opacity = isTransparent ? 0 : 1;
   wallTransparencyToggle.textContent = `壁: 透過${isTransparent ? 'ON' : 'OFF'}`;
 }
 
