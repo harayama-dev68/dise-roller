@@ -14,7 +14,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color('#152033');
 
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-camera.position.set(0, 5, 8);
+camera.position.set(0, 7, 12);
 camera.lookAt(0, 1, 0);
 
 const hemi = new THREE.HemisphereLight(0xdde8ff, 0x182033, 1.0);
@@ -32,13 +32,15 @@ world.broadphase = new CANNON.SAPBroadphase(world);
 world.defaultContactMaterial.friction = 0.45;
 world.defaultContactMaterial.restitution = 0.35;
 
-const tableGeo = new THREE.BoxGeometry(9, 0.5, 9);
+const tableSize = 18;
+const tableGeo = new THREE.BoxGeometry(tableSize, 0.5, tableSize);
 const tableMat = new THREE.MeshStandardMaterial({ color: '#344966', roughness: 0.9, metalness: 0.05 });
 const tableMesh = new THREE.Mesh(tableGeo, tableMat);
 tableMesh.position.set(0, -0.25, 0);
 scene.add(tableMesh);
 
-const tableBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(4.5, 0.25, 4.5)) });
+const tableHalfSize = tableSize / 2;
+const tableBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(tableHalfSize, 0.25, tableHalfSize)) });
 tableBody.position.set(0, -0.25, 0);
 world.addBody(tableBody);
 
