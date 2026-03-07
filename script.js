@@ -45,8 +45,9 @@ const tableBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Ve
 tableBody.position.set(0, -0.25, 0);
 world.addBody(tableBody);
 
-const wallHeight = 3;
-const wallThickness = 0.8;
+const wallHeight = 3.5;
+const wallThickness = 1.2;
+const wallCenterY = wallHeight / 2 - 0.25;
 const wallMat = new THREE.MeshStandardMaterial({
   color: '#8fb7ff',
   transparent: true,
@@ -64,14 +65,14 @@ function setWallTransparency(isTransparent) {
 
 function addBoundaryWall(width, depth, x, z) {
   const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(width, wallHeight, depth), wallMat);
-  wallMesh.position.set(x, wallHeight / 2, z);
+  wallMesh.position.set(x, wallCenterY, z);
   scene.add(wallMesh);
 
   const wallBody = new CANNON.Body({
     mass: 0,
     shape: new CANNON.Box(new CANNON.Vec3(width / 2, wallHeight / 2, depth / 2)),
   });
-  wallBody.position.set(x, wallHeight / 2, z);
+  wallBody.position.set(x, wallCenterY, z);
   world.addBody(wallBody);
 }
 
@@ -222,7 +223,7 @@ function animate(now) {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
 
-  world.step(fixedTimeStep, dt, 4);
+  world.step(fixedTimeStep, dt, 8);
 
   for (const { mesh, body } of diceSet) {
     mesh.position.copy(body.position);
