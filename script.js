@@ -44,6 +44,34 @@ const tableBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Ve
 tableBody.position.set(0, -0.25, 0);
 world.addBody(tableBody);
 
+const wallHeight = 3;
+const wallThickness = 0.8;
+const wallMat = new THREE.MeshStandardMaterial({
+  color: '#8fb7ff',
+  transparent: true,
+  opacity: 0.12,
+  roughness: 0.6,
+  metalness: 0,
+});
+
+function addBoundaryWall(width, depth, x, z) {
+  const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(width, wallHeight, depth), wallMat);
+  wallMesh.position.set(x, wallHeight / 2, z);
+  scene.add(wallMesh);
+
+  const wallBody = new CANNON.Body({
+    mass: 0,
+    shape: new CANNON.Box(new CANNON.Vec3(width / 2, wallHeight / 2, depth / 2)),
+  });
+  wallBody.position.set(x, wallHeight / 2, z);
+  world.addBody(wallBody);
+}
+
+addBoundaryWall(tableSize + wallThickness * 2, wallThickness, 0, tableHalfSize + wallThickness / 2);
+addBoundaryWall(tableSize + wallThickness * 2, wallThickness, 0, -(tableHalfSize + wallThickness / 2));
+addBoundaryWall(wallThickness, tableSize + wallThickness * 2, tableHalfSize + wallThickness / 2, 0);
+addBoundaryWall(wallThickness, tableSize + wallThickness * 2, -(tableHalfSize + wallThickness / 2), 0);
+
 function createFaceTexture(value) {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
