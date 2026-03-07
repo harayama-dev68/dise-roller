@@ -11,7 +11,11 @@
       <h1>3D Dice Roller</h1>
       <p class="result" id="result">結果: -</p>
       <div class="scene" id="scene" aria-label="物理演算ダイスの表示"></div>
-      <button id="rollButton" type="button">転がす</button>
+      <div class="controls">
+        <label for="diceCount">ダイス数</label>
+        <input id="diceCount" type="number" min="1" max="10" value="1" />
+        <button id="rollButton" type="button">転がす</button>
+      </div>
     </main>
 
     <script type="module" src="script.js"></script>
