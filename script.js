@@ -32,10 +32,6 @@ world.allowSleep = true;
 world.broadphase = new CANNON.SAPBroadphase(world);
 world.defaultContactMaterial.friction = 0.45;
 world.defaultContactMaterial.restitution = 0.35;
-world.defaultContactMaterial.contactEquationStiffness = 1e8;
-world.defaultContactMaterial.contactEquationRelaxation = 3;
-world.solver.iterations = 20;
-world.solver.tolerance = 0.001;
 
 const tableSize = 18;
 const tableGeo = new THREE.BoxGeometry(tableSize, 0.5, tableSize);
@@ -49,9 +45,8 @@ const tableBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Ve
 tableBody.position.set(0, -0.25, 0);
 world.addBody(tableBody);
 
-const wallHeight = 4.2;
-const wallThickness = 2;
-const wallCenterY = wallHeight / 2 - 1;
+const wallHeight = 3;
+const wallThickness = 0.8;
 const wallMat = new THREE.MeshStandardMaterial({
   color: '#8fb7ff',
   transparent: true,
@@ -69,14 +64,14 @@ function setWallTransparency(isTransparent) {
 
 function addBoundaryWall(width, depth, x, z) {
   const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(width, wallHeight, depth), wallMat);
-  wallMesh.position.set(x, wallCenterY, z);
+  wallMesh.position.set(x, wallHeight / 2, z);
   scene.add(wallMesh);
 
   const wallBody = new CANNON.Body({
     mass: 0,
     shape: new CANNON.Box(new CANNON.Vec3(width / 2, wallHeight / 2, depth / 2)),
   });
-  wallBody.position.set(x, wallCenterY, z);
+  wallBody.position.set(x, wallHeight / 2, z);
   world.addBody(wallBody);
 }
 
@@ -190,7 +185,7 @@ function rollDice() {
 
     body.wakeUp();
     body.position.set(offsetX + (Math.random() - 0.5) * 0.4, 5.2 + Math.random() * 0.7, offsetZ + (Math.random() - 0.5) * 0.4);
-    body.velocity.set((Math.random() - 0.5) * 2.8, -1.6, (Math.random() - 0.5) * 2.8);
+    body.velocity.set((Math.random() - 0.5) * 3.6, -1.6, (Math.random() - 0.5) * 3.6);
     body.angularVelocity.set(
       (Math.random() * 2 + 10) * (Math.random() < 0.5 ? -1 : 1),
       (Math.random() * 2 + 12) * (Math.random() < 0.5 ? -1 : 1),
@@ -224,10 +219,10 @@ let last = performance.now();
 
 function animate(now) {
   requestAnimationFrame(animate);
-  const dt = Math.min((now - last) / 1000, 1 / 30);
+  const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
 
-  world.step(fixedTimeStep, dt, 8);
+  world.step(fixedTimeStep, dt, 4);
 
   for (const { mesh, body } of diceSet) {
     mesh.position.copy(body.position);
