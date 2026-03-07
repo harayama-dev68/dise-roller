@@ -5,6 +5,7 @@ const sceneRoot = document.getElementById('scene');
 const result = document.getElementById('result');
 const button = document.getElementById('rollButton');
 const diceCountInput = document.getElementById('diceCount');
+const wallTransparencyToggle = document.getElementById('wallTransparencyToggle');
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -53,6 +54,13 @@ const wallMat = new THREE.MeshStandardMaterial({
   roughness: 0.6,
   metalness: 0,
 });
+let isWallTransparencyEnabled = false;
+
+function setWallTransparency(isTransparent) {
+  isWallTransparencyEnabled = isTransparent;
+  wallMat.opacity = isTransparent ? 0 : 0.12;
+  wallTransparencyToggle.textContent = `壁: 透過${isTransparent ? 'ON' : 'OFF'}`;
+}
 
 function addBoundaryWall(width, depth, x, z) {
   const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(width, wallHeight, depth), wallMat);
@@ -192,6 +200,9 @@ diceCountInput.addEventListener('change', () => {
   syncDiceCount();
   rollDice();
 });
+wallTransparencyToggle.addEventListener('click', () => {
+  setWallTransparency(!isWallTransparencyEnabled);
+});
 
 function resize() {
   const width = sceneRoot.clientWidth;
@@ -230,5 +241,6 @@ function animate(now) {
 }
 
 syncDiceCount();
+setWallTransparency(false);
 rollDice();
 requestAnimationFrame(animate);
