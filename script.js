@@ -180,7 +180,7 @@ function playCollisionSound(strength) {
 
   const gain = context.createGain();
   gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.exponentialRampToValueAtTime(0.03 + clampedStrength * 0.09, start + 0.003);
+  gain.gain.exponentialRampToValueAtTime(0.045 + clampedStrength * 0.13, start + 0.003);
   gain.gain.exponentialRampToValueAtTime(0.0001, end);
 
   source.connect(filter);
