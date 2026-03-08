@@ -158,7 +158,7 @@ function playCollisionSound(strength) {
   }
 
   const clampedStrength = Math.min(1, Math.max(0, strength));
-  const duration = 0.05 + clampedStrength * 0.06;
+  const duration = 0.032 + clampedStrength * 0.038;
   const start = context.currentTime;
   const end = start + duration;
 
@@ -167,28 +167,48 @@ function playCollisionSound(strength) {
   const data = buffer.getChannelData(0);
   for (let i = 0; i < bufferSize; i += 1) {
     const t = i / bufferSize;
-    data[i] = (Math.random() * 2 - 1) * (1 - t);
+    const decay = 1 - t;
+    data[i] = (Math.random() * 2 - 1) * decay * decay;
   }
 
   const source = context.createBufferSource();
   source.buffer = buffer;
 
-  const filter = context.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.value = 700 + clampedStrength * 1200;
-  filter.Q.value = 1.1;
+  const highpass = context.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = 1100 + clampedStrength * 900;
+
+  const bandpass = context.createBiquadFilter();
+  bandpass.type = 'bandpass';
+  bandpass.frequency.value = 2100 + clampedStrength * 1700;
+  bandpass.Q.value = 2.2;
 
   const gain = context.createGain();
   gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.exponentialRampToValueAtTime(0.045 + clampedStrength * 0.13, start + 0.003);
+  gain.gain.exponentialRampToValueAtTime(0.055 + clampedStrength * 0.14, start + 0.0014);
   gain.gain.exponentialRampToValueAtTime(0.0001, end);
 
-  source.connect(filter);
-  filter.connect(gain);
+  source.connect(highpass);
+  highpass.connect(bandpass);
+  bandpass.connect(gain);
   gain.connect(context.destination);
+
+  const click = context.createOscillator();
+  const clickGain = context.createGain();
+  click.type = 'triangle';
+  click.frequency.setValueAtTime(2600 + clampedStrength * 1400, start);
+  click.frequency.exponentialRampToValueAtTime(900, start + 0.012);
+  clickGain.gain.setValueAtTime(0.0001, start);
+  clickGain.gain.exponentialRampToValueAtTime(0.028 + clampedStrength * 0.04, start + 0.0008);
+  clickGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.015);
+
+  click.connect(clickGain);
+  clickGain.connect(context.destination);
 
   source.start(start);
   source.stop(end);
+  click.start(start);
+  click.stop(start + 0.016);
 }
 
 function onDiceCollide(event) {
