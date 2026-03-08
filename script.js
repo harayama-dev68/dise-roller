@@ -119,6 +119,93 @@ const localNormals = {
 const diceSet = [];
 let announcedSleep = false;
 
+const diceBodyIds = new Set();
+let audioContext = null;
+let canPlayCollisionSound = false;
+let lastCollisionSoundTime = 0;
+const collisionSoundIntervalMs = 35;
+
+function ensureAudioContext() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) {
+    return null;
+  }
+
+  if (!audioContext) {
+    audioContext = new AudioContextClass();
+  }
+
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+
+  return audioContext;
+}
+
+function playCollisionSound(strength) {
+  if (!canPlayCollisionSound) {
+    return;
+  }
+
+  const now = performance.now();
+  if (now - lastCollisionSoundTime < collisionSoundIntervalMs) {
+    return;
+  }
+  lastCollisionSoundTime = now;
+
+  const context = ensureAudioContext();
+  if (!context) {
+    return;
+  }
+
+  const clampedStrength = Math.min(1, Math.max(0, strength));
+  const duration = 0.05 + clampedStrength * 0.06;
+  const start = context.currentTime;
+  const end = start + duration;
+
+  const bufferSize = Math.floor(context.sampleRate * duration);
+  const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i += 1) {
+    const t = i / bufferSize;
+    data[i] = (Math.random() * 2 - 1) * (1 - t);
+  }
+
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+
+  const filter = context.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = 700 + clampedStrength * 1200;
+  filter.Q.value = 1.1;
+
+  const gain = context.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.03 + clampedStrength * 0.09, start + 0.003);
+  gain.gain.exponentialRampToValueAtTime(0.0001, end);
+
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(context.destination);
+
+  source.start(start);
+  source.stop(end);
+}
+
+function onDiceCollide(event) {
+  if (!event.body || !diceBodyIds.has(event.body.id)) {
+    return;
+  }
+
+  const impactVelocity = Math.abs(event.contact.getImpactVelocityAlongNormal());
+  if (impactVelocity < 1.2) {
+    return;
+  }
+
+  const normalized = (impactVelocity - 1.2) / 12;
+  playCollisionSound(normalized);
+}
+
 function topFaceValue(body) {
   let best = 1;
   let maxDot = -Infinity;
@@ -148,7 +235,9 @@ function createDie() {
     sleepTimeLimit: 0.5,
     sleepSpeedLimit: 0.12,
   });
+  body.addEventListener('collide', onDiceCollide);
   world.addBody(body);
+  diceBodyIds.add(body.id);
 
   return { mesh, body };
 }
@@ -163,6 +252,8 @@ function syncDiceCount() {
 
   while (diceSet.length > count) {
     const die = diceSet.pop();
+    die.body.removeEventListener('collide', onDiceCollide);
+    diceBodyIds.delete(die.body.id);
     world.removeBody(die.body);
     scene.remove(die.mesh);
     die.mesh.geometry.dispose();
@@ -170,6 +261,8 @@ function syncDiceCount() {
 }
 
 function rollDice() {
+  ensureAudioContext();
+  canPlayCollisionSound = true;
   syncDiceCount();
   announcedSleep = false;
   result.textContent = '結果: ...';
