@@ -119,7 +119,6 @@ const localNormals = {
 const diceSet = [];
 let announcedSleep = false;
 
-const diceBodyIds = new Set();
 let audioContext = null;
 let canPlayCollisionSound = false;
 let lastCollisionSoundTime = 0;
@@ -193,7 +192,7 @@ function playCollisionSound(strength) {
 }
 
 function onDiceCollide(event) {
-  if (!event.body || !diceBodyIds.has(event.body.id)) {
+  if (!event.contact) {
     return;
   }
 
@@ -237,7 +236,6 @@ function createDie() {
   });
   body.addEventListener('collide', onDiceCollide);
   world.addBody(body);
-  diceBodyIds.add(body.id);
 
   return { mesh, body };
 }
@@ -253,7 +251,6 @@ function syncDiceCount() {
   while (diceSet.length > count) {
     const die = diceSet.pop();
     die.body.removeEventListener('collide', onDiceCollide);
-    diceBodyIds.delete(die.body.id);
     world.removeBody(die.body);
     scene.remove(die.mesh);
     die.mesh.geometry.dispose();
