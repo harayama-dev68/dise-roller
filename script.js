@@ -6,6 +6,8 @@ const result = document.getElementById('result');
 const button = document.getElementById('rollButton');
 const diceCountInput = document.getElementById('diceCount');
 const wallTransparencyToggle = document.getElementById('wallTransparencyToggle');
+const soundVolumeInput = document.getElementById('soundVolume');
+const soundVolumeValue = document.getElementById('soundVolumeValue');
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -123,6 +125,14 @@ let audioContext = null;
 let canPlayCollisionSound = false;
 let lastCollisionSoundTime = 0;
 const collisionSoundIntervalMs = 35;
+let collisionVolume = (Number.parseInt(soundVolumeInput.value, 10) || 80) / 100;
+
+function setCollisionVolume(value) {
+  const bounded = Math.min(100, Math.max(0, Number.parseInt(value, 10) || 0));
+  collisionVolume = bounded / 100;
+  soundVolumeInput.value = String(bounded);
+  soundVolumeValue.textContent = `${bounded}%`;
+}
 
 function ensureAudioContext() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -183,9 +193,10 @@ function playCollisionSound(strength) {
   bandpass.frequency.value = 2100 + clampedStrength * 1700;
   bandpass.Q.value = 2.2;
 
+  const impactPeak = (0.055 + clampedStrength * 0.14) * collisionVolume;
   const gain = context.createGain();
   gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.exponentialRampToValueAtTime(0.055 + clampedStrength * 0.14, start + 0.0014);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, impactPeak), start + 0.0014);
   gain.gain.exponentialRampToValueAtTime(0.0001, end);
 
   source.connect(highpass);
@@ -198,8 +209,9 @@ function playCollisionSound(strength) {
   click.type = 'triangle';
   click.frequency.setValueAtTime(2600 + clampedStrength * 1400, start);
   click.frequency.exponentialRampToValueAtTime(900, start + 0.012);
+  const clickPeak = (0.028 + clampedStrength * 0.04) * collisionVolume;
   clickGain.gain.setValueAtTime(0.0001, start);
-  clickGain.gain.exponentialRampToValueAtTime(0.028 + clampedStrength * 0.04, start + 0.0008);
+  clickGain.gain.exponentialRampToValueAtTime(Math.max(0.0001, clickPeak), start + 0.0008);
   clickGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.015);
 
   click.connect(clickGain);
@@ -313,6 +325,9 @@ diceCountInput.addEventListener('change', () => {
 wallTransparencyToggle.addEventListener('click', () => {
   setWallTransparency(!isWallTransparencyEnabled);
 });
+soundVolumeInput.addEventListener('input', () => {
+  setCollisionVolume(soundVolumeInput.value);
+});
 
 function resize() {
   const width = sceneRoot.clientWidth;
@@ -352,5 +367,6 @@ function animate(now) {
 
 syncDiceCount();
 setWallTransparency(false);
+setCollisionVolume(soundVolumeInput.value);
 rollDice();
 requestAnimationFrame(animate);

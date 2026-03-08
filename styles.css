@@ -82,3 +82,14 @@ button:hover {
 button:active {
   transform: translateY(1px);
 }
+
+input[type='range'] {
+  width: 7.5rem;
+  accent-color: #60a5fa;
+}
+
+.value-label {
+  min-width: 3rem;
+  text-align: left;
+  font-weight: 700;
+}
