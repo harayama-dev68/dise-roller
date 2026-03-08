@@ -14,6 +14,11 @@
       <div class="controls">
         <label for="diceCount">ダイス数</label>
         <input id="diceCount" type="number" min="1" max="10" value="1" />
+
+        <label for="soundVolume">効果音</label>
+        <input id="soundVolume" type="range" min="0" max="100" step="1" value="80" />
+        <span id="soundVolumeValue" class="value-label">80%</span>
+
         <button id="rollButton" type="button">転がす</button>
         <button id="wallTransparencyToggle" type="button">壁: 透過OFF</button>
       </div>

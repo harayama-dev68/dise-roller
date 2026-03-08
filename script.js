@@ -6,6 +6,8 @@ const result = document.getElementById('result');
 const button = document.getElementById('rollButton');
 const diceCountInput = document.getElementById('diceCount');
 const wallTransparencyToggle = document.getElementById('wallTransparencyToggle');
+const soundVolumeInput = document.getElementById('soundVolume');
+const soundVolumeValue = document.getElementById('soundVolumeValue');
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -119,6 +121,122 @@ const localNormals = {
 const diceSet = [];
 let announcedSleep = false;
 
+let audioContext = null;
+let canPlayCollisionSound = false;
+let lastCollisionSoundTime = 0;
+const collisionSoundIntervalMs = 35;
+let collisionVolume = (Number.parseInt(soundVolumeInput.value, 10) || 80) / 100;
+
+function setCollisionVolume(value) {
+  const bounded = Math.min(100, Math.max(0, Number.parseInt(value, 10) || 0));
+  collisionVolume = bounded / 100;
+  soundVolumeInput.value = String(bounded);
+  soundVolumeValue.textContent = `${bounded}%`;
+}
+
+function ensureAudioContext() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) {
+    return null;
+  }
+
+  if (!audioContext) {
+    audioContext = new AudioContextClass();
+  }
+
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+
+  return audioContext;
+}
+
+function playCollisionSound(strength) {
+  if (!canPlayCollisionSound) {
+    return;
+  }
+
+  const now = performance.now();
+  if (now - lastCollisionSoundTime < collisionSoundIntervalMs) {
+    return;
+  }
+  lastCollisionSoundTime = now;
+
+  const context = ensureAudioContext();
+  if (!context) {
+    return;
+  }
+
+  const clampedStrength = Math.min(1, Math.max(0, strength));
+  const duration = 0.032 + clampedStrength * 0.038;
+  const start = context.currentTime;
+  const end = start + duration;
+
+  const bufferSize = Math.floor(context.sampleRate * duration);
+  const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i += 1) {
+    const t = i / bufferSize;
+    const decay = 1 - t;
+    data[i] = (Math.random() * 2 - 1) * decay * decay;
+  }
+
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+
+  const highpass = context.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = 1100 + clampedStrength * 900;
+
+  const bandpass = context.createBiquadFilter();
+  bandpass.type = 'bandpass';
+  bandpass.frequency.value = 2100 + clampedStrength * 1700;
+  bandpass.Q.value = 2.2;
+
+  const impactPeak = (0.055 + clampedStrength * 0.14) * collisionVolume;
+  const gain = context.createGain();
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, impactPeak), start + 0.0014);
+  gain.gain.exponentialRampToValueAtTime(0.0001, end);
+
+  source.connect(highpass);
+  highpass.connect(bandpass);
+  bandpass.connect(gain);
+  gain.connect(context.destination);
+
+  const click = context.createOscillator();
+  const clickGain = context.createGain();
+  click.type = 'triangle';
+  click.frequency.setValueAtTime(2600 + clampedStrength * 1400, start);
+  click.frequency.exponentialRampToValueAtTime(900, start + 0.012);
+  const clickPeak = (0.028 + clampedStrength * 0.04) * collisionVolume;
+  clickGain.gain.setValueAtTime(0.0001, start);
+  clickGain.gain.exponentialRampToValueAtTime(Math.max(0.0001, clickPeak), start + 0.0008);
+  clickGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.015);
+
+  click.connect(clickGain);
+  clickGain.connect(context.destination);
+
+  source.start(start);
+  source.stop(end);
+  click.start(start);
+  click.stop(start + 0.016);
+}
+
+function onDiceCollide(event) {
+  if (!event.contact) {
+    return;
+  }
+
+  const impactVelocity = Math.abs(event.contact.getImpactVelocityAlongNormal());
+  if (impactVelocity < 1.2) {
+    return;
+  }
+
+  const normalized = (impactVelocity - 1.2) / 12;
+  playCollisionSound(normalized);
+}
+
 function topFaceValue(body) {
   let best = 1;
   let maxDot = -Infinity;
@@ -148,6 +266,7 @@ function createDie() {
     sleepTimeLimit: 0.5,
     sleepSpeedLimit: 0.12,
   });
+  body.addEventListener('collide', onDiceCollide);
   world.addBody(body);
 
   return { mesh, body };
@@ -163,6 +282,7 @@ function syncDiceCount() {
 
   while (diceSet.length > count) {
     const die = diceSet.pop();
+    die.body.removeEventListener('collide', onDiceCollide);
     world.removeBody(die.body);
     scene.remove(die.mesh);
     die.mesh.geometry.dispose();
@@ -170,6 +290,8 @@ function syncDiceCount() {
 }
 
 function rollDice() {
+  ensureAudioContext();
+  canPlayCollisionSound = true;
   syncDiceCount();
   announcedSleep = false;
   result.textContent = '結果: ...';
@@ -202,6 +324,9 @@ diceCountInput.addEventListener('change', () => {
 });
 wallTransparencyToggle.addEventListener('click', () => {
   setWallTransparency(!isWallTransparencyEnabled);
+});
+soundVolumeInput.addEventListener('input', () => {
+  setCollisionVolume(soundVolumeInput.value);
 });
 
 function resize() {
@@ -242,5 +367,6 @@ function animate(now) {
 
 syncDiceCount();
 setWallTransparency(false);
+setCollisionVolume(soundVolumeInput.value);
 rollDice();
 requestAnimationFrame(animate);
