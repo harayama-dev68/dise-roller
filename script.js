@@ -1,4 +1,5 @@
 import * as THREE from 'https://unpkg.com/three@0.161.0/build/three.module.js';
+import { TDSLoader } from 'https://unpkg.com/three@0.161.0/examples/jsm/loaders/TDSLoader.js';
 import * as CANNON from 'https://cdn.skypack.dev/cannon-es';
 
 const sceneRoot = document.getElementById('scene');
@@ -120,6 +121,85 @@ const localNormals = {
 
 const diceSet = [];
 let announcedSleep = false;
+
+let diceModelPrototype = null;
+
+function createFallbackDiceMesh() {
+  return new THREE.Mesh(new THREE.BoxGeometry(diceSize, diceSize, diceSize), materials);
+}
+
+function normalizeLoadedDiceModel(rawModel) {
+  const model = rawModel.clone(true);
+
+  model.traverse((node) => {
+    if (!node.isMesh) {
+      return;
+    }
+
+    node.castShadow = true;
+    node.receiveShadow = true;
+
+    if (Array.isArray(node.material)) {
+      node.material = node.material.map((material) => material.clone());
+    } else if (node.material) {
+      node.material = node.material.clone();
+    }
+  });
+
+  const box = new THREE.Box3().setFromObject(model);
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  box.getSize(size);
+  box.getCenter(center);
+
+  const longest = Math.max(size.x, size.y, size.z);
+  if (longest > 0) {
+    const scale = diceSize / longest;
+    model.scale.setScalar(scale);
+  }
+
+  model.position.sub(center.multiplyScalar(model.scale.x));
+  return model;
+}
+
+function createDiceVisual() {
+  if (!diceModelPrototype) {
+    return createFallbackDiceMesh();
+  }
+
+  return diceModelPrototype.clone(true);
+}
+
+function applyLoadedModelToExistingDice() {
+  if (!diceModelPrototype) {
+    return;
+  }
+
+  for (const die of diceSet) {
+    scene.remove(die.mesh);
+    die.mesh.traverse((node) => {
+      if (node.isMesh) {
+        node.geometry.dispose();
+      }
+    });
+
+    die.mesh = createDiceVisual();
+    scene.add(die.mesh);
+  }
+}
+
+const tdsLoader = new TDSLoader();
+tdsLoader.load(
+  './dice.3ds',
+  (loadedObject) => {
+    diceModelPrototype = normalizeLoadedDiceModel(loadedObject);
+    applyLoadedModelToExistingDice();
+  },
+  undefined,
+  (error) => {
+    console.warn('dice.3ds の読み込みに失敗したため、デフォルトの立方体ダイスを使用します。', error);
+  },
+);
 
 let audioContext = null;
 let canPlayCollisionSound = false;
@@ -254,7 +334,7 @@ function topFaceValue(body) {
 }
 
 function createDie() {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(diceSize, diceSize, diceSize), materials);
+  const mesh = createDiceVisual();
   scene.add(mesh);
 
   const body = new CANNON.Body({
@@ -285,7 +365,6 @@ function syncDiceCount() {
     die.body.removeEventListener('collide', onDiceCollide);
     world.removeBody(die.body);
     scene.remove(die.mesh);
-    die.mesh.geometry.dispose();
   }
 }
 
