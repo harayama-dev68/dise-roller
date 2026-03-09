@@ -1,4 +1,5 @@
 import * as THREE from 'https://unpkg.com/three@0.161.0/build/three.module.js';
+import { GLTFLoader } from 'https://unpkg.com/three@0.161.0/examples/jsm/loaders/GLTFLoader.js';
 import * as CANNON from 'https://cdn.skypack.dev/cannon-es';
 
 const sceneRoot = document.getElementById('scene');
@@ -120,6 +121,43 @@ const localNormals = {
 
 const diceSet = [];
 let announcedSleep = false;
+const gltfLoader = new GLTFLoader();
+let diceModelTemplate = null;
+
+function loadDiceModel() {
+  return new Promise((resolve) => {
+    gltfLoader.load(
+      './DICE.glb',
+      (gltf) => {
+        const model = gltf.scene;
+        model.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = false;
+            child.receiveShadow = false;
+          }
+        });
+
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const maxAxis = Math.max(size.x, size.y, size.z) || 1;
+        const scale = diceSize / maxAxis;
+        model.scale.setScalar(scale);
+
+        const centeredBox = new THREE.Box3().setFromObject(model);
+        const center = centeredBox.getCenter(new THREE.Vector3());
+        model.position.sub(center);
+
+        diceModelTemplate = model;
+        resolve();
+      },
+      undefined,
+      () => {
+        diceModelTemplate = null;
+        resolve();
+      },
+    );
+  });
+}
 
 let audioContext = null;
 let canPlayCollisionSound = false;
@@ -254,7 +292,9 @@ function topFaceValue(body) {
 }
 
 function createDie() {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(diceSize, diceSize, diceSize), materials);
+  const mesh = diceModelTemplate
+    ? diceModelTemplate.clone(true)
+    : new THREE.Mesh(new THREE.BoxGeometry(diceSize, diceSize, diceSize), materials);
   scene.add(mesh);
 
   const body = new CANNON.Body({
@@ -365,8 +405,10 @@ function animate(now) {
   renderer.render(scene, camera);
 }
 
-syncDiceCount();
-setWallTransparency(false);
-setCollisionVolume(soundVolumeInput.value);
-rollDice();
-requestAnimationFrame(animate);
+loadDiceModel().finally(() => {
+  syncDiceCount();
+  setWallTransparency(false);
+  setCollisionVolume(soundVolumeInput.value);
+  rollDice();
+  requestAnimationFrame(animate);
+});
