@@ -1,4 +1,5 @@
 import * as THREE from 'https://unpkg.com/three@0.161.0/build/three.module.js';
+import { FBXLoader } from 'https://unpkg.com/three@0.161.0/examples/jsm/loaders/FBXLoader.js';
 import * as CANNON from 'https://cdn.skypack.dev/cannon-es';
 
 const sceneRoot = document.getElementById('scene');
@@ -106,6 +107,9 @@ function createFaceTexture(value) {
 
 const faceOrder = [1, 6, 2, 5, 3, 4];
 const materials = faceOrder.map((n) => new THREE.MeshStandardMaterial({ map: createFaceTexture(n), roughness: 0.3, metalness: 0 }));
+
+const fbxLoader = new FBXLoader();
+let diceModelTemplate = null;
 
 const diceSize = 1.2;
 const worldUp = new CANNON.Vec3(0, 1, 0);
@@ -254,7 +258,9 @@ function topFaceValue(body) {
 }
 
 function createDie() {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(diceSize, diceSize, diceSize), materials);
+  const mesh = diceModelTemplate
+    ? diceModelTemplate.clone(true)
+    : new THREE.Mesh(new THREE.BoxGeometry(diceSize, diceSize, diceSize), materials);
   scene.add(mesh);
 
   const body = new CANNON.Body({
@@ -272,6 +278,70 @@ function createDie() {
   return { mesh, body };
 }
 
+function disposeMeshResources(root) {
+  root.traverse((node) => {
+    if (!node.isMesh) {
+      return;
+    }
+
+    node.geometry?.dispose();
+    if (Array.isArray(node.material)) {
+      node.material.forEach((material) => material?.dispose?.());
+    } else {
+      node.material?.dispose?.();
+    }
+  });
+}
+
+function replaceDiceVisuals() {
+  if (!diceModelTemplate) {
+    return;
+  }
+
+  for (const die of diceSet) {
+    scene.remove(die.mesh);
+    disposeMeshResources(die.mesh);
+
+    die.mesh = diceModelTemplate.clone(true);
+    die.mesh.position.copy(die.body.position);
+    die.mesh.quaternion.copy(die.body.quaternion);
+    scene.add(die.mesh);
+  }
+}
+
+async function loadDiceModel() {
+  try {
+    const loaded = await fbxLoader.loadAsync('./Dice.fbx');
+    const box = new THREE.Box3().setFromObject(loaded);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+
+    const maxDimension = Math.max(size.x, size.y, size.z) || 1;
+    const scale = diceSize / maxDimension;
+    loaded.scale.setScalar(scale);
+
+    loaded.updateMatrixWorld(true);
+    const centered = new THREE.Box3().setFromObject(loaded);
+    const center = new THREE.Vector3();
+    centered.getCenter(center);
+    loaded.position.sub(center);
+
+    loaded.traverse((node) => {
+      if (!node.isMesh) {
+        return;
+      }
+      node.castShadow = false;
+      node.receiveShadow = false;
+      node.material = new THREE.MeshStandardMaterial({ color: '#f7fbff', roughness: 0.35, metalness: 0.05 });
+    });
+
+    diceModelTemplate = loaded;
+    replaceDiceVisuals();
+  } catch (error) {
+    console.warn('Dice.fbx の読み込みに失敗したため、立方体モデルを使用します。', error);
+  }
+}
+
 function syncDiceCount() {
   const count = Math.min(10, Math.max(1, Number.parseInt(diceCountInput.value, 10) || 1));
   diceCountInput.value = String(count);
@@ -285,7 +355,7 @@ function syncDiceCount() {
     die.body.removeEventListener('collide', onDiceCollide);
     world.removeBody(die.body);
     scene.remove(die.mesh);
-    die.mesh.geometry.dispose();
+    disposeMeshResources(die.mesh);
   }
 }
 
@@ -369,4 +439,5 @@ syncDiceCount();
 setWallTransparency(false);
 setCollisionVolume(soundVolumeInput.value);
 rollDice();
+loadDiceModel();
 requestAnimationFrame(animate);
