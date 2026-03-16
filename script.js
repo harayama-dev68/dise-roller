@@ -114,12 +114,12 @@ let diceModelTemplate = null;
 const diceSize = 1.2;
 const worldUp = new CANNON.Vec3(0, 1, 0);
 const localNormals = {
-  1: new CANNON.Vec3(1, 0, 0),
-  2: new CANNON.Vec3(0, 1, 0),
+  1: new CANNON.Vec3(0, 1, 0),
+  2: new CANNON.Vec3(1, 0, 0),
   3: new CANNON.Vec3(0, 0, 1),
-  4: new CANNON.Vec3(0, 0, -1),
+  4: new CANNON.Vec3(-1, 0, 0),
   5: new CANNON.Vec3(0, -1, 0),
-  6: new CANNON.Vec3(-1, 0, 0),
+  6: new CANNON.Vec3(0, 0, -1),
 };
 
 const diceSet = [];
