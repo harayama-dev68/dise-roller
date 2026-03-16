@@ -47,6 +47,9 @@ tableSpotLight.target.position.set(0, 0, 0);
 scene.add(tableSpotLight);
 scene.add(tableSpotLight.target);
 
+const tableSpotLightHelper = new THREE.SpotLightHelper(tableSpotLight, 0x7ec8ff);
+scene.add(tableSpotLightHelper);
+
 const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -18, 0),
 });
@@ -525,6 +528,7 @@ function animate(now) {
   }
 
   updateCameraTracking();
+  tableSpotLightHelper.update();
 
   renderer.render(scene, camera);
 }
