@@ -41,8 +41,8 @@ const dir = new THREE.DirectionalLight(0xffffff, 0.18);
 dir.position.set(5, 10, 4);
 scene.add(dir);
 
-const tableSpotLight = new THREE.SpotLight(0xfff3d6, 7.2, 30, Math.PI * 0.2, 0.15, 1.6);
-tableSpotLight.position.set(0, 10, 0);
+const tableSpotLight = new THREE.SpotLight(0xfff3d6, 10.5, 30, Math.PI * 0.2, 0.15, 1.0);
+tableSpotLight.position.set(0, 15, 0);
 tableSpotLight.target.position.set(0, 0, 0);
 scene.add(tableSpotLight);
 scene.add(tableSpotLight.target);
