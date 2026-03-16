@@ -38,8 +38,18 @@ const hemi = new THREE.HemisphereLight(0xdde8ff, 0x182033, 1.0);
 scene.add(hemi);
 
 const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+const rotatingLightTarget = new THREE.Object3D();
+rotatingLightTarget.position.set(0, 0, 0);
+scene.add(rotatingLightTarget);
+dir.target = rotatingLightTarget;
 dir.position.set(5, 9, 4);
 scene.add(dir);
+
+const rotatingLightSettings = {
+  radius: 8,
+  height: 9,
+  angularSpeed: 0.35,
+};
 
 const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -18, 0),
@@ -519,6 +529,13 @@ function animate(now) {
   }
 
   updateCameraTracking();
+
+  const lightAngle = now * 0.001 * rotatingLightSettings.angularSpeed;
+  dir.position.set(
+    Math.cos(lightAngle) * rotatingLightSettings.radius,
+    rotatingLightSettings.height,
+    Math.sin(lightAngle) * rotatingLightSettings.radius,
+  );
 
   renderer.render(scene, camera);
 }
