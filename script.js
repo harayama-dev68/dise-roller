@@ -332,7 +332,6 @@ async function loadDiceModel() {
       }
       node.castShadow = false;
       node.receiveShadow = false;
-      node.material = new THREE.MeshStandardMaterial({ color: '#f7fbff', roughness: 0.35, metalness: 0.05 });
     });
 
     diceModelTemplate = loaded;
