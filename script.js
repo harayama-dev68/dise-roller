@@ -21,6 +21,19 @@ const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
 camera.position.set(0, 7, 12);
 camera.lookAt(0, 1, 0);
 
+const cameraSettings = {
+  minDistance: 10,
+  maxDistance: 20,
+  padding: 1.35,
+  verticalOffset: 2.4,
+  followLerp: 0.085,
+  lookLerp: 0.11,
+};
+const cameraState = {
+  currentPosition: camera.position.clone(),
+  currentLookTarget: new THREE.Vector3(0, 1, 0),
+};
+
 const hemi = new THREE.HemisphereLight(0xdde8ff, 0x182033, 1.0);
 scene.add(hemi);
 
@@ -405,6 +418,63 @@ function resize() {
   camera.updateProjectionMatrix();
   renderer.setSize(width, height, false);
 }
+
+function updateCameraTracking() {
+  if (diceSet.length === 0) {
+    cameraState.currentPosition.lerp(new THREE.Vector3(0, 7, 12), cameraSettings.followLerp);
+    cameraState.currentLookTarget.lerp(new THREE.Vector3(0, 1, 0), cameraSettings.lookLerp);
+    camera.position.copy(cameraState.currentPosition);
+    camera.lookAt(cameraState.currentLookTarget);
+    return;
+  }
+
+  const center = new THREE.Vector3();
+  const min = new THREE.Vector3(Infinity, Infinity, Infinity);
+  const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  const avgVelocity = new THREE.Vector3();
+
+  for (const { body } of diceSet) {
+    const p = body.position;
+    const v = body.velocity;
+    center.x += p.x;
+    center.y += p.y;
+    center.z += p.z;
+    avgVelocity.x += v.x;
+    avgVelocity.y += v.y;
+    avgVelocity.z += v.z;
+    min.x = Math.min(min.x, p.x);
+    min.y = Math.min(min.y, p.y);
+    min.z = Math.min(min.z, p.z);
+    max.x = Math.max(max.x, p.x);
+    max.y = Math.max(max.y, p.y);
+    max.z = Math.max(max.z, p.z);
+  }
+
+  center.multiplyScalar(1 / diceSet.length);
+  avgVelocity.multiplyScalar(1 / diceSet.length);
+
+  const lookAhead = avgVelocity.multiplyScalar(0.12);
+  const targetLook = center.clone().add(lookAhead);
+  targetLook.y = Math.max(0.8, targetLook.y);
+
+  const spanX = max.x - min.x;
+  const spanZ = max.z - min.z;
+  const sceneSpan = Math.max(spanX, spanZ, 2);
+  const halfFov = THREE.MathUtils.degToRad(camera.fov * 0.5);
+  const requiredDistance = (sceneSpan * cameraSettings.padding) / Math.tan(halfFov);
+  const clampedDistance = THREE.MathUtils.clamp(requiredDistance, cameraSettings.minDistance, cameraSettings.maxDistance);
+
+  const targetPosition = new THREE.Vector3(
+    targetLook.x,
+    targetLook.y + cameraSettings.verticalOffset + clampedDistance * 0.55,
+    targetLook.z + clampedDistance,
+  );
+
+  cameraState.currentPosition.lerp(targetPosition, cameraSettings.followLerp);
+  cameraState.currentLookTarget.lerp(targetLook, cameraSettings.lookLerp);
+  camera.position.copy(cameraState.currentPosition);
+  camera.lookAt(cameraState.currentLookTarget);
+}
 window.addEventListener('resize', resize);
 resize();
 
@@ -430,6 +500,8 @@ function animate(now) {
     const total = values.reduce((sum, value) => sum + value, 0);
     result.textContent = `結果: ${values.join(' + ')} = ${total}`;
   }
+
+  updateCameraTracking();
 
   renderer.render(scene, camera);
 }
