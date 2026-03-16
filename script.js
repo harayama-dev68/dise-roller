@@ -49,7 +49,7 @@ world.broadphase = new CANNON.SAPBroadphase(world);
 world.defaultContactMaterial.friction = 0.45;
 world.defaultContactMaterial.restitution = 0.35;
 
-const tableSize = 18;
+const tableSize = 30;
 const textureLoader = new THREE.TextureLoader();
 const tableTexture = textureLoader.load('walnut_wood_grain_and_knots.jpg');
 tableTexture.colorSpace = THREE.SRGBColorSpace;
