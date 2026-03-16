@@ -52,13 +52,23 @@ world.defaultContactMaterial.restitution = 0.35;
 const tableSize = 30;
 const textureLoader = new THREE.TextureLoader();
 const tableTexture = textureLoader.load('walnut_wood_grain_and_knots.jpg');
+const tableNormalMap = textureLoader.load('walnut_wood_grain_and_knots_normal_map.png');
 tableTexture.colorSpace = THREE.SRGBColorSpace;
 tableTexture.wrapS = THREE.ClampToEdgeWrapping;
 tableTexture.wrapT = THREE.ClampToEdgeWrapping;
 tableTexture.repeat.set(1, 1);
+tableNormalMap.wrapS = THREE.ClampToEdgeWrapping;
+tableNormalMap.wrapT = THREE.ClampToEdgeWrapping;
+tableNormalMap.repeat.set(1, 1);
 
 const tableGeo = new THREE.BoxGeometry(tableSize, 0.5, tableSize);
-const tableMat = new THREE.MeshStandardMaterial({ map: tableTexture, roughness: 0.9, metalness: 0.05 });
+const tableMat = new THREE.MeshStandardMaterial({
+  map: tableTexture,
+  normalMap: tableNormalMap,
+  normalScale: new THREE.Vector2(1, 1),
+  roughness: 0.9,
+  metalness: 0.05,
+});
 const tableMesh = new THREE.Mesh(tableGeo, tableMat);
 tableMesh.position.set(0, -0.25, 0);
 scene.add(tableMesh);
