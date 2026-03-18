@@ -12,6 +12,8 @@ const soundVolumeValue = document.getElementById('soundVolumeValue');
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 sceneRoot.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -39,11 +41,25 @@ scene.add(hemi);
 
 const dir = new THREE.DirectionalLight(0xffffff, 0.18);
 dir.position.set(5, 10, 4);
+dir.castShadow = true;
+dir.shadow.mapSize.set(1024, 1024);
+dir.shadow.camera.near = 1;
+dir.shadow.camera.far = 30;
+dir.shadow.camera.left = -12;
+dir.shadow.camera.right = 12;
+dir.shadow.camera.top = 12;
+dir.shadow.camera.bottom = -12;
 scene.add(dir);
 
 const tableSpotLight = new THREE.SpotLight(0xfff3d6, 10.5, 30, Math.PI * 0.2, 0.15, 1.0);
 tableSpotLight.position.set(0, 15, 0);
 tableSpotLight.target.position.set(0, 0, 0);
+tableSpotLight.castShadow = true;
+tableSpotLight.shadow.mapSize.set(2048, 2048);
+tableSpotLight.shadow.camera.near = 1;
+tableSpotLight.shadow.camera.far = 35;
+tableSpotLight.shadow.focus = 1;
+tableSpotLight.shadow.bias = -0.00008;
 scene.add(tableSpotLight);
 scene.add(tableSpotLight.target);
 
@@ -80,6 +96,7 @@ const tableMat = new THREE.MeshStandardMaterial({
 });
 const tableMesh = new THREE.Mesh(tableGeo, tableMat);
 tableMesh.position.set(0, -0.25, 0);
+tableMesh.receiveShadow = true;
 scene.add(tableMesh);
 
 const tableHalfSize = tableSize / 2;
@@ -107,6 +124,8 @@ function setWallTransparency(isTransparent) {
 function addBoundaryWall(width, depth, x, z) {
   const wallMesh = new THREE.Mesh(new THREE.BoxGeometry(width, wallHeight, depth), wallMat);
   wallMesh.position.set(x, wallHeight / 2, z);
+  wallMesh.receiveShadow = true;
+  wallMesh.castShadow = true;
   scene.add(wallMesh);
 
   const wallBody = new CANNON.Body({
@@ -300,6 +319,14 @@ function createDie() {
   const mesh = diceModelTemplate
     ? diceModelTemplate.clone(true)
     : new THREE.Mesh(new THREE.BoxGeometry(diceSize, diceSize, diceSize), materials);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.traverse?.((node) => {
+    if (node.isMesh) {
+      node.castShadow = true;
+      node.receiveShadow = true;
+    }
+  });
   scene.add(mesh);
 
   const body = new CANNON.Body({
@@ -342,6 +369,14 @@ function replaceDiceVisuals() {
     disposeMeshResources(die.mesh);
 
     die.mesh = diceModelTemplate.clone(true);
+    die.mesh.castShadow = true;
+    die.mesh.receiveShadow = true;
+    die.mesh.traverse((node) => {
+      if (node.isMesh) {
+        node.castShadow = true;
+        node.receiveShadow = true;
+      }
+    });
     die.mesh.position.copy(die.body.position);
     die.mesh.quaternion.copy(die.body.quaternion);
     scene.add(die.mesh);
@@ -369,8 +404,8 @@ async function loadDiceModel() {
       if (!node.isMesh) {
         return;
       }
-      node.castShadow = false;
-      node.receiveShadow = false;
+      node.castShadow = true;
+      node.receiveShadow = true;
     });
 
     diceModelTemplate = loaded;
