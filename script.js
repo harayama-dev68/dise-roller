@@ -17,7 +17,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 sceneRoot.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#152033');
+scene.background = new THREE.Color('#000000');
 
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
 camera.position.set(0, 7, 12);
@@ -36,10 +36,10 @@ const cameraState = {
   currentLookTarget: new THREE.Vector3(0, 1, 0),
 };
 
-const hemi = new THREE.HemisphereLight(0xdde8ff, 0x182033, 0.12);
+const hemi = new THREE.HemisphereLight(0xdde8ff, 0x182033, 0.05);
 scene.add(hemi);
 
-const dir = new THREE.DirectionalLight(0xffffff, 0.18);
+const dir = new THREE.DirectionalLight(0xffffff, 0.1);
 dir.position.set(5, 10, 4);
 dir.castShadow = true;
 dir.shadow.mapSize.set(1024, 1024);
@@ -51,8 +51,8 @@ dir.shadow.camera.top = 12;
 dir.shadow.camera.bottom = -12;
 scene.add(dir);
 
-const tableSpotLight = new THREE.SpotLight(0xfff3d6, 10.5, 30, Math.PI * 0.2, 0.15, 1.0);
-tableSpotLight.position.set(0, 15, 0);
+const tableSpotLight = new THREE.SpotLight(0xfff3d6, 15.5, 35, Math.PI * 0.2, 0.15, 0.5);
+tableSpotLight.position.set(0, 18, 0);
 tableSpotLight.target.position.set(0, 0, 0);
 tableSpotLight.castShadow = true;
 tableSpotLight.shadow.mapSize.set(2048, 2048);
@@ -62,9 +62,6 @@ tableSpotLight.shadow.focus = 1;
 tableSpotLight.shadow.bias = -0.00008;
 scene.add(tableSpotLight);
 scene.add(tableSpotLight.target);
-
-const tableSpotLightHelper = new THREE.SpotLightHelper(tableSpotLight, 0x7ec8ff);
-scene.add(tableSpotLightHelper);
 
 const world = new CANNON.World({
   gravity: new CANNON.Vec3(0, -18, 0),
@@ -563,7 +560,6 @@ function animate(now) {
   }
 
   updateCameraTracking();
-  tableSpotLightHelper.update();
 
   renderer.render(scene, camera);
 }
