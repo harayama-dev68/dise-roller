@@ -12,6 +12,11 @@
       <p class="result" id="result">結果: -</p>
       <div class="scene" id="scene" aria-label="物理演算ダイスの表示"></div>
       <div class="controls">
+        <div class="dice-type-toggle" role="group" aria-label="ダイスの種類">
+          <button id="d6Button" type="button" class="toggle-button is-active" aria-pressed="true">6面ダイス</button>
+          <button id="d10Button" type="button" class="toggle-button" aria-pressed="false">10面ダイス</button>
+        </div>
+
         <label for="diceCount">ダイス数</label>
         <input id="diceCount" type="number" min="1" max="10" value="1" />
 
