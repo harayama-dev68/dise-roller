@@ -6,6 +6,7 @@ const sceneRoot = document.getElementById('scene');
 const result = document.getElementById('result');
 const button = document.getElementById('rollButton');
 const diceCountInput = document.getElementById('diceCount');
+const diceTypeInput = document.getElementById('diceType');
 const wallTransparencyToggle = document.getElementById('wallTransparencyToggle');
 const soundVolumeInput = document.getElementById('soundVolume');
 const soundVolumeValue = document.getElementById('soundVolumeValue');
@@ -160,15 +161,139 @@ function createFaceTexture(value) {
   return texture;
 }
 
+function createLabelSprite(value, size = 0.42) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 256, 256);
+  ctx.fillStyle = 'rgba(247, 251, 255, 0.96)';
+  ctx.beginPath();
+  ctx.arc(128, 128, 104, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#1a2a44';
+  ctx.lineWidth = 10;
+  ctx.stroke();
+  ctx.fillStyle = '#111';
+  ctx.font = 'bold 120px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(value), 128, 136);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.anisotropy = 4;
+  const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(size, size, 1);
+  sprite.userData.texture = texture;
+  return sprite;
+}
+
+function buildD10GeometryData(size) {
+  const radius = size * 0.48;
+  const height = size * 0.92;
+  const offset = height * 0.2;
+  const topIndex = 0;
+  const bottomIndex = 11;
+  const vertices = [new THREE.Vector3(0, height / 2, 0)];
+
+  for (let i = 0; i < 10; i += 1) {
+    const angle = (i * Math.PI) / 5;
+    const y = i % 2 === 0 ? offset : -offset;
+    vertices.push(new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius));
+  }
+
+  vertices.push(new THREE.Vector3(0, -height / 2, 0));
+
+  const faces = [];
+  for (let i = 0; i < 5; i += 1) {
+    const even = 1 + i * 2;
+    const odd = 1 + ((i * 2 + 1) % 10);
+    const nextEven = 1 + ((i * 2 + 2) % 10);
+    faces.push([topIndex, even, odd, nextEven]);
+  }
+  for (let i = 0; i < 5; i += 1) {
+    const odd = 1 + ((i * 2 + 1) % 10);
+    const even = 1 + ((i * 2 + 2) % 10);
+    const nextOdd = 1 + ((i * 2 + 3) % 10);
+    faces.push([bottomIndex, nextOdd, even, odd]);
+  }
+
+  const faceValues = [1, 3, 5, 7, 9, 2, 4, 6, 8, 10];
+  return { vertices, faces, faceValues };
+}
+
+function createD10Mesh(size) {
+  const data = buildD10GeometryData(size);
+  const geometry = new THREE.BufferGeometry();
+  const positions = [];
+  const normals = [];
+  const indices = [];
+  const faceInfos = [];
+
+  for (let faceIndex = 0; faceIndex < data.faces.length; faceIndex += 1) {
+    const face = data.faces[faceIndex];
+    const baseIndex = positions.length / 3;
+    const a = data.vertices[face[0]];
+    const b = data.vertices[face[1]];
+    const c = data.vertices[face[2]];
+    const d = data.vertices[face[3]];
+    const normal = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a)).normalize();
+
+    [a, b, c, d].forEach((vertex) => {
+      positions.push(vertex.x, vertex.y, vertex.z);
+      normals.push(normal.x, normal.y, normal.z);
+    });
+    indices.push(baseIndex, baseIndex + 1, baseIndex + 2, baseIndex, baseIndex + 2, baseIndex + 3);
+
+    const center = new THREE.Vector3().add(a).add(b).add(c).add(d).multiplyScalar(0.25);
+    faceInfos.push({ value: data.faceValues[faceIndex], center, normal: normal.clone() });
+  }
+
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setIndex(indices);
+  geometry.computeBoundingSphere();
+
+  const material = new THREE.MeshStandardMaterial({
+    color: '#f59e0b',
+    roughness: 0.34,
+    metalness: 0.08,
+    flatShading: true,
+  });
+
+  const group = new THREE.Group();
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+
+  faceInfos.forEach(({ value, center, normal }) => {
+    const sprite = createLabelSprite(value);
+    sprite.position.copy(center.clone().add(normal.clone().multiplyScalar(0.12)));
+    group.add(sprite);
+  });
+
+  const cannonVertices = data.vertices.map((vertex) => new CANNON.Vec3(vertex.x, vertex.y, vertex.z));
+  const cannonFaces = data.faces.map((face) => [...face]);
+  const normalsMap = Object.fromEntries(faceInfos.map(({ value, normal }) => [value, new CANNON.Vec3(normal.x, normal.y, normal.z)]));
+
+  return {
+    mesh: group,
+    shape: new CANNON.ConvexPolyhedron({ vertices: cannonVertices, faces: cannonFaces }),
+    topFaceNormals: normalsMap,
+  };
+}
+
 const faceOrder = [1, 6, 2, 5, 3, 4];
-const materials = faceOrder.map((n) => new THREE.MeshStandardMaterial({ map: createFaceTexture(n), roughness: 0.3, metalness: 0 }));
+const d6Materials = faceOrder.map((n) => new THREE.MeshStandardMaterial({ map: createFaceTexture(n), roughness: 0.3, metalness: 0 }));
 
 const fbxLoader = new FBXLoader();
 let diceModelTemplate = null;
 
 const diceSize = 1.2;
 const worldUp = new CANNON.Vec3(0, 1, 0);
-const localNormals = {
+const d6TopFaceNormals = {
   1: new CANNON.Vec3(0, 1, 0),
   2: new CANNON.Vec3(1, 0, 0),
   3: new CANNON.Vec3(0, 0, 1),
@@ -176,9 +301,59 @@ const localNormals = {
   5: new CANNON.Vec3(0, -1, 0),
   6: new CANNON.Vec3(0, 0, -1),
 };
+const d10GeometryData = buildD10GeometryData(diceSize);
+
+function createD10Shape() {
+  return new CANNON.ConvexPolyhedron({
+    vertices: d10GeometryData.vertices.map((vertex) => new CANNON.Vec3(vertex.x, vertex.y, vertex.z)),
+    faces: d10GeometryData.faces.map((face) => [...face]),
+  });
+}
+
+function createD10TopFaceNormals() {
+  const normals = {};
+  d10GeometryData.faces.forEach((face, index) => {
+    const a = d10GeometryData.vertices[face[0]];
+    const b = d10GeometryData.vertices[face[1]];
+    const c = d10GeometryData.vertices[face[2]];
+    const normal = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(c, a)).normalize();
+    normals[d10GeometryData.faceValues[index]] = new CANNON.Vec3(normal.x, normal.y, normal.z);
+  });
+  return normals;
+}
+
+const d10TopFaceNormals = createD10TopFaceNormals();
+const diceDefinitions = {
+  d6: {
+    label: 'D6',
+    sides: 6,
+    topFaceNormals: d6TopFaceNormals,
+    createMesh() {
+      const mesh = diceModelTemplate
+        ? diceModelTemplate.clone(true)
+        : new THREE.Mesh(new THREE.BoxGeometry(diceSize, diceSize, diceSize), d6Materials);
+      return mesh;
+    },
+    createShape() {
+      return new CANNON.Box(new CANNON.Vec3(diceSize / 2, diceSize / 2, diceSize / 2));
+    },
+  },
+  d10: {
+    label: 'D10',
+    sides: 10,
+    topFaceNormals: d10TopFaceNormals,
+    createMesh() {
+      return createD10Mesh(diceSize).mesh;
+    },
+    createShape() {
+      return createD10Shape();
+    },
+  },
+};
 
 const diceSet = [];
 let announcedSleep = false;
+let currentDiceType = diceTypeInput.value in diceDefinitions ? diceTypeInput.value : 'd6';
 
 let audioContext = null;
 let canPlayCollisionSound = false;
@@ -296,12 +471,12 @@ function onDiceCollide(event) {
   playCollisionSound(normalized);
 }
 
-function topFaceValue(body) {
+function topFaceValue(die) {
   let best = 1;
   let maxDot = -Infinity;
 
-  for (const [face, normal] of Object.entries(localNormals)) {
-    const worldNormal = body.quaternion.vmult(normal);
+  for (const [face, normal] of Object.entries(die.topFaceNormals)) {
+    const worldNormal = die.body.quaternion.vmult(normal);
     const dot = worldNormal.dot(worldUp);
     if (dot > maxDot) {
       maxDot = dot;
@@ -312,23 +487,26 @@ function topFaceValue(body) {
   return best;
 }
 
-function createDie() {
-  const mesh = diceModelTemplate
-    ? diceModelTemplate.clone(true)
-    : new THREE.Mesh(new THREE.BoxGeometry(diceSize, diceSize, diceSize), materials);
+function prepareMesh(mesh) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.traverse?.((node) => {
-    if (node.isMesh) {
+    if (node.isMesh || node.isSprite) {
       node.castShadow = true;
       node.receiveShadow = true;
     }
   });
+}
+
+function createDie() {
+  const definition = diceDefinitions[currentDiceType];
+  const mesh = definition.createMesh();
+  prepareMesh(mesh);
   scene.add(mesh);
 
   const body = new CANNON.Body({
     mass: 1,
-    shape: new CANNON.Box(new CANNON.Vec3(diceSize / 2, diceSize / 2, diceSize / 2)),
+    shape: definition.createShape(),
     material: new CANNON.Material('dice'),
     linearDamping: 0.25,
     angularDamping: 0.2,
@@ -338,22 +516,37 @@ function createDie() {
   body.addEventListener('collide', onDiceCollide);
   world.addBody(body);
 
-  return { mesh, body };
+  return { mesh, body, kind: currentDiceType, topFaceNormals: definition.topFaceNormals };
 }
 
 function disposeMeshResources(root) {
   root.traverse((node) => {
-    if (!node.isMesh) {
-      return;
+    if (node.isMesh) {
+      node.geometry?.dispose();
+      if (Array.isArray(node.material)) {
+        node.material.forEach((material) => material?.dispose?.());
+      } else {
+        node.material?.dispose?.();
+      }
     }
 
-    node.geometry?.dispose();
-    if (Array.isArray(node.material)) {
-      node.material.forEach((material) => material?.dispose?.());
-    } else {
+    if (node.isSprite) {
+      node.material?.map?.dispose?.();
       node.material?.dispose?.();
     }
   });
+}
+
+function clearDiceSet() {
+  while (diceSet.length > 0) {
+    const die = diceSet.pop();
+    die.body.removeEventListener('collide', onDiceCollide);
+    world.removeBody(die.body);
+    scene.remove(die.mesh);
+    if (die.kind !== 'd6' || !diceModelTemplate) {
+      disposeMeshResources(die.mesh);
+    }
+  }
 }
 
 function replaceDiceVisuals() {
@@ -362,18 +555,14 @@ function replaceDiceVisuals() {
   }
 
   for (const die of diceSet) {
+    if (die.kind !== 'd6') {
+      continue;
+    }
+
     scene.remove(die.mesh);
     disposeMeshResources(die.mesh);
-
     die.mesh = diceModelTemplate.clone(true);
-    die.mesh.castShadow = true;
-    die.mesh.receiveShadow = true;
-    die.mesh.traverse((node) => {
-      if (node.isMesh) {
-        node.castShadow = true;
-        node.receiveShadow = true;
-      }
-    });
+    prepareMesh(die.mesh);
     die.mesh.position.copy(die.body.position);
     die.mesh.quaternion.copy(die.body.quaternion);
     scene.add(die.mesh);
@@ -425,19 +614,33 @@ function syncDiceCount() {
     die.body.removeEventListener('collide', onDiceCollide);
     world.removeBody(die.body);
     scene.remove(die.mesh);
-    disposeMeshResources(die.mesh);
+    if (die.kind !== 'd6' || !diceModelTemplate) {
+      disposeMeshResources(die.mesh);
+    }
   }
+}
+
+function syncDiceType() {
+  const nextType = diceTypeInput.value in diceDefinitions ? diceTypeInput.value : 'd6';
+  if (nextType === currentDiceType) {
+    return;
+  }
+
+  currentDiceType = nextType;
+  clearDiceSet();
+  syncDiceCount();
 }
 
 function rollDice() {
   ensureAudioContext();
   canPlayCollisionSound = true;
+  syncDiceType();
   syncDiceCount();
   announcedSleep = false;
-  result.textContent = '結果: ...';
+  result.textContent = `結果 (${diceDefinitions[currentDiceType].label}): ...`;
 
   const cols = Math.ceil(Math.sqrt(diceSet.length));
-  const spacing = 1.6;
+  const spacing = currentDiceType === 'd10' ? 1.9 : 1.6;
 
   diceSet.forEach(({ body }, index) => {
     const row = Math.floor(index / cols);
@@ -460,6 +663,10 @@ function rollDice() {
 button.addEventListener('click', rollDice);
 diceCountInput.addEventListener('change', () => {
   syncDiceCount();
+  rollDice();
+});
+diceTypeInput.addEventListener('change', () => {
+  syncDiceType();
   rollDice();
 });
 wallTransparencyToggle.addEventListener('click', () => {
@@ -518,6 +725,7 @@ function updateCameraTracking() {
   const spanX = max.x - min.x;
   const spanZ = max.z - min.z;
   const sceneSpan = Math.max(spanX, spanZ, 2);
+
   const halfFov = THREE.MathUtils.degToRad(camera.fov * 0.5);
   const requiredDistance = (sceneSpan * cameraSettings.padding) / Math.tan(halfFov);
   const clampedDistance = THREE.MathUtils.clamp(requiredDistance, cameraSettings.minDistance, cameraSettings.maxDistance);
@@ -554,9 +762,9 @@ function animate(now) {
   const allSleeping = diceSet.length > 0 && diceSet.every(({ body }) => body.sleepState === CANNON.Body.SLEEPING);
   if (!announcedSleep && allSleeping) {
     announcedSleep = true;
-    const values = diceSet.map(({ body }) => topFaceValue(body));
+    const values = diceSet.map((die) => topFaceValue(die));
     const total = values.reduce((sum, value) => sum + value, 0);
-    result.textContent = `結果: ${values.join(' + ')} = ${total}`;
+    result.textContent = `結果 (${diceDefinitions[currentDiceType].label}): ${values.join(' + ')} = ${total}`;
   }
 
   updateCameraTracking();
