@@ -55,7 +55,8 @@ label {
   font-weight: 600;
 }
 
-input[type='number'] {
+input[type='number'],
+select {
   width: 4.5rem;
   padding: 0.45rem 0.5rem;
   border-radius: 0.5rem;
