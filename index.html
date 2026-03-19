@@ -12,6 +12,12 @@
       <p class="result" id="result">結果: -</p>
       <div class="scene" id="scene" aria-label="物理演算ダイスの表示"></div>
       <div class="controls">
+        <label for="diceType">ダイス種類</label>
+        <select id="diceType">
+          <option value="d6">6面</option>
+          <option value="d10">10面</option>
+        </select>
+
         <label for="diceCount">ダイス数</label>
         <input id="diceCount" type="number" min="1" max="10" value="1" />
 
