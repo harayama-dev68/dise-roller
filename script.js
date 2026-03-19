@@ -191,11 +191,12 @@ function createLabelSprite(value, size = 0.42) {
 
 function buildD10GeometryData(size) {
   const radius = size * 0.48;
-  const height = size * 0.92;
-  const offset = height * 0.2;
+  const halfHeight = size * 0.46;
+  // For this face layout, planar kite faces require poleHeight / ringOffset = 5 + 2 * sqrt(5).
+  const offset = halfHeight / (5 + 2 * Math.sqrt(5));
   const topIndex = 0;
   const bottomIndex = 11;
-  const vertices = [new THREE.Vector3(0, height / 2, 0)];
+  const vertices = [new THREE.Vector3(0, halfHeight, 0)];
 
   for (let i = 0; i < 10; i += 1) {
     const angle = (i * Math.PI) / 5;
@@ -203,7 +204,7 @@ function buildD10GeometryData(size) {
     vertices.push(new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius));
   }
 
-  vertices.push(new THREE.Vector3(0, -height / 2, 0));
+  vertices.push(new THREE.Vector3(0, -halfHeight, 0));
 
   const faces = [];
   for (let i = 0; i < 5; i += 1) {
